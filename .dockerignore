@@ -1,0 +1,15 @@
+.git/
+.pytest_cache/
+.venv/
+venv/
+__pycache__/
+**/__pycache__/
+dataset/
+reports/
+tests/
+*.py[cod]
+mlflow.db*
+mlruns/
+MLOPS_IMPLEMENTATION_ROADMAP.md
+project_md.md
+prompt.md

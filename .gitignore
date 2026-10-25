@@ -58,8 +58,17 @@ Thumbs.db
 htmlcov/
 
 # DVC
+/dataset/csic_database.csv
 .dvc/tmp/
 .dvc/cache/
+.dvc/site-cache/
+.dvc-site-cache/
 
 # Logs
 *.log
+
+# Local MLflow tracking database and artifacts
+mlflow.db
+mlflow.db-shm
+mlflow.db-wal
+mlruns/

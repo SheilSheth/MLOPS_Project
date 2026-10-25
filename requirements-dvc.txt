@@ -1,0 +1,2 @@
+# Optional tooling for local dataset and pipeline versioning.
+dvc>=3.50.0

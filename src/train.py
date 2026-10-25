@@ -19,6 +19,7 @@ import random
 import warnings
 import numpy as np
 import pandas as pd
+import mlflow
 
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import StratifiedKFold, cross_val_predict
@@ -158,12 +159,38 @@ def train(csv_path: str, out_dir: str = 'models', reports_dir: str = 'reports'):
     os.makedirs(out_dir, exist_ok=True)
     os.makedirs(reports_dir, exist_ok=True)
 
+    # Use a local SQLite store by default so the same store can be opened by
+    # `make mlflow-ui`. Both settings can be overridden through the environment.
+    tracking_uri = os.environ.get('MLFLOW_TRACKING_URI', 'sqlite:///mlflow.db')
+    mlflow.set_tracking_uri(tracking_uri)
+    experiment_name = os.environ.get('MLFLOW_EXPERIMENT_NAME', 'http-threat-detector')
+    mlflow.set_experiment(experiment_name)
+    mlflow.start_run(run_name='lightgbm-training')
+    mlflow_run_id = mlflow.active_run().info.run_id
+    mlflow.set_tags({
+        'model_family': 'LightGBM',
+        'dataset': os.path.basename(csv_path),
+        'pipeline': 'src.train',
+    })
+    mlflow.log_params({
+        'seed': SEED,
+        'dataset_path': os.path.abspath(csv_path),
+        'model_type': 'LightGBM',
+        'threshold_selection_max_fpr': 0.01,
+        'feature_ngram_enabled': False,
+    })
+
     print("=" * 60)
     print("Step 1: Parsing and deduplicating...")
     records = load_and_parse(csv_path)
     n_normal = sum(1 for r in records if r['label'] == 0)
     n_attack = sum(1 for r in records if r['label'] == 1)
     print(f"  Unique records: {len(records)} ({n_normal} normal, {n_attack} attack)")
+    mlflow.log_params({
+        'n_records': len(records),
+        'n_normal': n_normal,
+        'n_attack': n_attack,
+    })
 
     print("Step 2: Splitting...")
     train_recs, val_recs, test_recs, holdout_recs = stratified_split(records)
@@ -308,6 +335,38 @@ def train(csv_path: str, out_dir: str = 'models', reports_dir: str = 'reports'):
     # Save test records for error analysis
     with open(os.path.join(reports_dir, 'test_records.pkl'), 'wb') as f:
         pickle.dump(test_recs, f)
+
+    # Keep run metadata numeric and searchable in the MLflow UI. Save model
+    # files as run artifacts as well as in models/ for the serving pipeline.
+    mlflow.log_params({
+        f'lgbm_{key}': value for key, value in best_params.items()
+    })
+    mlflow.log_params({
+        'n_features': fx.n_features,
+        'n_train': len(train_recs),
+        'n_validation': len(val_recs),
+        'n_test': len(test_recs),
+        'n_clean_holdout': len(holdout_recs),
+    })
+    mlflow.log_metrics({
+        'threshold': float(lgbm_thr),
+        'validation_precision': float(lgbm_val_m['precision']),
+        'validation_recall': float(lgbm_val_m['recall']),
+        'validation_f1': float(lgbm_val_m['f1']),
+        'validation_fpr': float(lgbm_val_m['fpr']),
+        'test_precision': float(lgbm_test_m['precision']),
+        'test_recall': float(lgbm_test_m['recall']),
+        'test_f1': float(lgbm_test_m['f1']),
+        'test_fpr': float(lgbm_test_m['fpr']),
+        'test_roc_auc': float(lgbm_roc),
+        'test_pr_auc': float(lgbm_pr),
+        'clean_holdout_fpr': float(hold_fpr),
+        'clean_holdout_false_positives': float(hold_fp),
+    })
+    mlflow.log_artifacts(out_dir, artifact_path='model_bundle')
+    mlflow.log_artifact(metrics_path, artifact_path='evaluation')
+    mlflow.end_run(status='FINISHED')
+    print(f"MLflow run recorded: {mlflow_run_id}")
 
     print("\nTraining complete.")
     return lgbm, scaler, fx, config, metrics

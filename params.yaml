@@ -1,0 +1,5 @@
+dataset:
+  path: dataset/csic_database.csv
+
+train:
+  seed: 42

@@ -50,13 +50,13 @@
     "holdout": 241
   },
   "onnx": {
-    "path": "models/model.onnx",
+    "path": "models\\model.onnx",
     "export_method": "onnxmltools+lightgbm",
-    "max_diff_vs_native": 8.477731702760671e-08,
-    "mean_diff_vs_native": 3.426524392943096e-08,
-    "latency_single_p50_ms": 0.014271500049289898,
-    "latency_single_p95_ms": 0.015711049854871813,
-    "latency_batch1000_p50_ms": 1.011880500072948,
-    "latency_batch1000_p95_ms": 2.0974820001356416
+    "max_diff_vs_native": 1.3312948715649142e-07,
+    "mean_diff_vs_native": 3.470314773762243e-08,
+    "latency_single_p50_ms": 0.06630001007579267,
+    "latency_single_p95_ms": 0.22358500864356695,
+    "latency_batch1000_p50_ms": 12.671099990257062,
+    "latency_batch1000_p95_ms": 56.22531499393517
   }
 }

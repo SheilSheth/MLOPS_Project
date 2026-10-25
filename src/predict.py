@@ -23,16 +23,49 @@ def load_predictor():
 
 
 class Predictor:
-    def __init__(self, models_dir: str = MODELS):
-        with open(os.path.join(models_dir, 'lgbm_model.pkl'), 'rb') as f:
-            self.model = pickle.load(f)
+    def __init__(self, models_dir: str = MODELS, backend: str = 'onnx'):
+        """Load the preprocessing artifacts and selected inference backend.
+
+        ONNX is the serving default. It avoids loading the native LightGBM
+        pickle in the API process; feature extraction and scaling remain
+        Python preprocessing steps and are therefore required for both paths.
+        """
+        if backend not in {'onnx', 'native'}:
+            raise ValueError("backend must be 'onnx' or 'native'")
+
+        self.models_dir = os.fspath(models_dir)
+        self.backend = backend
+        self.model = None
+        if backend == 'native':
+            with open(os.path.join(self.models_dir, 'lgbm_model.pkl'), 'rb') as f:
+                self.model = pickle.load(f)
         with open(os.path.join(models_dir, 'scaler.pkl'), 'rb') as f:
             self.scaler = pickle.load(f)
         with open(os.path.join(models_dir, 'feature_extractor.pkl'), 'rb') as f:
             self.fx = pickle.load(f)
-        with open(os.path.join(models_dir, 'config.json')) as f:
+        with open(os.path.join(self.models_dir, 'config.json')) as f:
             config = json.load(f)
         self.threshold = config['threshold']
+        self._ort_sess = None
+
+    def _predict_onnx_probability(self, scaled_features: np.ndarray) -> np.ndarray:
+        """Return positive-class probabilities from the ONNX model."""
+        import onnxruntime as ort
+
+        if self._ort_sess is None:
+            onnx_path = os.path.join(self.models_dir, 'model.onnx')
+            self._ort_sess = ort.InferenceSession(
+                onnx_path, providers=['CPUExecutionProvider']
+            )
+        sess = self._ort_sess
+        input_name = sess.get_inputs()[0].name
+        outputs = sess.run(None, {input_name: scaled_features.astype(np.float32)})
+
+        if len(outputs) >= 2 and isinstance(outputs[1], list):
+            return np.asarray([item[1] for item in outputs[1]], dtype=np.float64)
+        if len(outputs) >= 2 and hasattr(outputs[1], 'shape'):
+            return np.asarray(outputs[1][:, 1], dtype=np.float64)
+        return np.asarray(outputs[0], dtype=np.float64).reshape(-1)
 
     def predict_one(self, record: dict) -> dict:
         """
@@ -43,40 +76,33 @@ class Predictor:
         """
         vec = self.fx.transform_one(record).reshape(1, -1)
         vec_s = self.scaler.transform(vec)
-        prob = float(self.model.predict_proba(vec_s)[0, 1])
+        if self.backend == 'onnx':
+            prob = float(self._predict_onnx_probability(vec_s)[0])
+        else:
+            prob = float(self.model.predict_proba(vec_s)[0, 1])
         label = int(prob >= self.threshold)
-        return {'label': label, 'probability': prob, 'is_attack': bool(label)}
+        return {'label': label, 'probability': prob, 'is_attack': bool(label),
+                'backend': self.backend}
 
     def predict_batch(self, records: list[dict]) -> list[dict]:
         X = self.fx.transform(records)
         X_s = self.scaler.transform(X)
-        probs = self.model.predict_proba(X_s)[:, 1]
+        if self.backend == 'onnx':
+            probs = self._predict_onnx_probability(X_s)
+        else:
+            probs = self.model.predict_proba(X_s)[:, 1]
         results = []
         for prob in probs:
             label = int(prob >= self.threshold)
             results.append({'label': label, 'probability': float(prob),
-                            'is_attack': bool(label)})
+                            'is_attack': bool(label), 'backend': self.backend})
         return results
 
     def predict_onnx(self, record: dict) -> dict:
         """Use ONNX runtime for inference (requires models/model.onnx)."""
-        import onnxruntime as ort
-        onnx_path = os.path.join(MODELS, 'model.onnx')
-        if not hasattr(self, '_ort_sess'):
-            self._ort_sess = ort.InferenceSession(
-                onnx_path, providers=['CPUExecutionProvider']
-            )
-        sess = self._ort_sess
-        input_name = sess.get_inputs()[0].name
         vec = self.fx.transform_one(record).reshape(1, -1)
-        vec_s = self.scaler.transform(vec).astype(np.float32)
-        out = sess.run(None, {input_name: vec_s})
-        if isinstance(out[1], list):
-            prob = float(out[1][0][1])
-        elif len(out) >= 2 and hasattr(out[1], 'shape'):
-            prob = float(out[1][0, 1])
-        else:
-            prob = float(out[0][0])
+        vec_s = self.scaler.transform(vec)
+        prob = float(self._predict_onnx_probability(vec_s)[0])
         label = int(prob >= self.threshold)
         return {'label': label, 'probability': prob, 'is_attack': bool(label),
                 'backend': 'onnx'}
@@ -105,7 +131,7 @@ if __name__ == '__main__':
     })
     record = _parse_row(row)
 
-    predictor = Predictor()
+    predictor = Predictor(backend='onnx' if args.onnx else 'native')
     if args.onnx:
         result = predictor.predict_onnx(record)
     else:

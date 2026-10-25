@@ -1,0 +1,5 @@
+outs:
+- md5: 2cd8702d46725a54b1f5a60166b9e4cb
+  size: 29600649
+  hash: md5
+  path: csic_database.csv

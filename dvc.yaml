@@ -1,0 +1,30 @@
+stages:
+  train:
+    cmd:
+      - python -m src.train --csv ${dataset.path} --seed ${train.seed}
+      - python -m src.export_onnx
+      - python -m src.evaluate
+    deps:
+      - ${dataset.path}
+      - requirements.txt
+      - src/train.py
+      - src/parse.py
+      - src/features.py
+      - src/export_onnx.py
+      - src/evaluate.py
+    params:
+      - dataset.path
+      - train.seed
+    outs:
+      - models/lgbm_model.pkl
+      - models/lr_model.pkl
+      - models/scaler.pkl
+      - models/feature_extractor.pkl
+      - models/model.onnx
+      - reports/test_prob.npy
+      - reports/test_labels.npy
+      - reports/val_prob.npy
+      - reports/val_labels.npy
+      - reports/hold_prob.npy
+      - reports/hold_labels.npy
+      - reports/test_records.pkl

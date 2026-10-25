@@ -1,0 +1,89 @@
+schema: '2.0'
+stages:
+  train:
+    cmd:
+    - python -m src.train --csv dataset/csic_database.csv --seed 42
+    - python -m src.export_onnx
+    - python -m src.evaluate
+    deps:
+    - path: dataset/csic_database.csv
+      hash: md5
+      md5: 2cd8702d46725a54b1f5a60166b9e4cb
+      size: 29600649
+    - path: requirements.txt
+      hash: md5
+      md5: 782131c5d7a50358102f4cc7c9d2decd
+      size: 308
+    - path: src/evaluate.py
+      hash: md5
+      md5: 254db6824d434681c24dc829732851c2
+      size: 10261
+    - path: src/export_onnx.py
+      hash: md5
+      md5: a4c011950427dd636b9fc043175a02ec
+      size: 9127
+    - path: src/features.py
+      hash: md5
+      md5: ee83aaac7721c9050621669d2ee45518
+      size: 13728
+    - path: src/parse.py
+      hash: md5
+      md5: 2c703daba392ea82192ce2647662b6d2
+      size: 7344
+    - path: src/train.py
+      hash: md5
+      md5: 7a8d283fed7fc5491e9584b9217b0fb6
+      size: 15259
+    params:
+      params.yaml:
+        dataset.path: dataset/csic_database.csv
+        train.seed: 42
+    outs:
+    - path: models/feature_extractor.pkl
+      hash: md5
+      md5: d51729b496331d633939bf9cedd21c9d
+      size: 5608
+    - path: models/lgbm_model.pkl
+      hash: md5
+      md5: 7be0ee08216a0c5070ba9fdffe542c00
+      size: 317039
+    - path: models/lr_model.pkl
+      hash: md5
+      md5: db9c3e53b8c69e87b3799f404f90fcd8
+      size: 908
+    - path: models/model.onnx
+      hash: md5
+      md5: df2e8cda36b0dd2665ecf74cff11d45f
+      size: 186404
+    - path: models/scaler.pkl
+      hash: md5
+      md5: bf81c2717065400ab58f20bc4de610d9
+      size: 1601
+    - path: reports/hold_labels.npy
+      hash: md5
+      md5: 665dd8f2c21891aa6cba59bec41e89c2
+      size: 2056
+    - path: reports/hold_prob.npy
+      hash: md5
+      md5: fd8ae5bc19edc3577cb09b68f5a2f3a2
+      size: 2056
+    - path: reports/test_labels.npy
+      hash: md5
+      md5: 0a21881aa353c38ddbca091a59cf3b52
+      size: 16256
+    - path: reports/test_prob.npy
+      hash: md5
+      md5: 772faf8c60a58560385b85d5f5b2def4
+      size: 16256
+    - path: reports/test_records.pkl
+      hash: md5
+      md5: 7923d8d36479af4efca48bb98d162875
+      size: 1831645
+    - path: reports/val_labels.npy
+      hash: md5
+      md5: 516007889240d337596d15d9c0253692
+      size: 16240
+    - path: reports/val_prob.npy
+      hash: md5
+      md5: 789764aeb216385d0ff633928e4d219d
+      size: 16240

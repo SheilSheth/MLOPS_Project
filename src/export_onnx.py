@@ -160,9 +160,9 @@ def build_pipeline_and_export():
         print(f"  Mean absolute difference: {mean_diff:.6f}")
 
         if max_diff < 1e-3:
-            print("  ✓ ONNX predictions match native within tolerance")
+            print("  ONNX predictions match native within tolerance")
         else:
-            print(f"  ⚠ Large difference detected ({max_diff:.4f}) – may be converter quirk")
+            print(f"  Warning: large difference detected ({max_diff:.4f}); may be a converter quirk")
 
         # -------------------------------------------------------------------
         # Latency benchmark
@@ -198,9 +198,9 @@ def build_pipeline_and_export():
         p50_batch  = float(np.percentile(batch_times, 50))
         p95_batch  = float(np.percentile(batch_times, 95))
 
-        print(f"\n  Latency (CPU) — single request:")
+        print("\n  Latency (CPU) - single request:")
         print(f"    p50={p50_single:.3f}ms  p95={p95_single:.3f}ms")
-        print(f"  Latency (CPU) — batch of {len(batch)}:")
+        print(f"  Latency (CPU) - batch of {len(batch)}:")
         print(f"    p50={p50_batch:.3f}ms  p95={p95_batch:.3f}ms")
 
         # Update metrics.json with ONNX info
