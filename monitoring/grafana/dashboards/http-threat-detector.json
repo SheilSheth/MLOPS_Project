@@ -64,6 +64,19 @@
       "targets": [{"expr": "rate(http_threat_jobs_submitted_total[1m])", "legendFormat": "jobs/sec", "refId": "A"}],
       "title": "Async jobs submitted",
       "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 24},
+      "id": 7,
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "single"}},
+      "targets": [
+        {"expr": "sum(rate(http_threat_feature_drift_score_sum[5m])) / sum(rate(http_threat_feature_drift_score_count[5m]))", "legendFormat": "5m mean drift score", "refId": "A"},
+        {"expr": "http_threat_feature_drift_threshold", "legendFormat": "training baseline threshold", "refId": "B"}
+      ],
+      "title": "Input feature drift score",
+      "type": "timeseries"
     }
   ],
   "refresh": "5s",

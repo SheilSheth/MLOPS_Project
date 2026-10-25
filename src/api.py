@@ -39,6 +39,14 @@ QUEUE_DEPTH = Gauge('http_threat_queue_depth', 'Prediction jobs waiting in the R
 PROCESSING_DEPTH = Gauge(
     'http_threat_processing_depth', 'Prediction jobs currently held by the worker.'
 )
+FEATURE_DRIFT_SCORE = Histogram(
+    'http_threat_feature_drift_score',
+    'Mean absolute standardized feature value for accepted prediction inputs.',
+)
+FEATURE_DRIFT_THRESHOLD = Gauge(
+    'http_threat_feature_drift_threshold',
+    'Training-baseline threshold for the feature drift score.',
+)
 
 
 class PredictionRequest(BaseModel):
@@ -53,6 +61,7 @@ class PredictionResponse(BaseModel):
     probability: float
     is_attack: bool
     backend: str
+    feature_drift_score: float
 
 
 def _to_record(payload: PredictionRequest) -> dict[str, Any]:
@@ -87,6 +96,8 @@ def _to_record(payload: PredictionRequest) -> dict[str, Any]:
 async def lifespan(app: FastAPI):
     # Load ONNX and preprocessing artifacts once when the service starts.
     app.state.predictor = Predictor(backend='onnx')
+    if app.state.predictor.feature_drift_threshold is not None:
+        FEATURE_DRIFT_THRESHOLD.set(app.state.predictor.feature_drift_threshold)
     app.state.redis = Redis.from_url(
         os.environ.get('REDIS_URL', 'redis://localhost:6379/0'),
         decode_responses=True,
@@ -153,6 +164,7 @@ def predict(payload: PredictionRequest, request: Request) -> dict[str, Any]:
     try:
         record = _to_record(payload)
         result = predictor.predict_one(record)
+        FEATURE_DRIFT_SCORE.observe(result['feature_drift_score'])
         HTTP_PREDICTIONS.labels(
             result='attack' if result['is_attack'] else 'normal'
         ).inc()
@@ -164,6 +176,13 @@ def predict(payload: PredictionRequest, request: Request) -> dict[str, Any]:
 @app.post('/jobs', status_code=202)
 def submit_job(payload: PredictionRequest, request: Request) -> dict[str, str]:
     """Queue a request for the separate inference worker."""
+    predictor: Predictor | None = getattr(request.app.state, 'predictor', None)
+    if predictor is None:
+        raise HTTPException(status_code=503, detail='Model is not ready')
+    try:
+        drift_score = predictor.feature_drift_score(_to_record(payload))
+    except (KeyError, TypeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=f'Invalid HTTP request payload: {exc}') from exc
     job_id = str(uuid4())
     job = {
         'job_id': job_id,
@@ -175,6 +194,7 @@ def submit_job(payload: PredictionRequest, request: Request) -> dict[str, str]:
     pipeline.set(f'http-threat:job:{job_id}', json.dumps(job), ex=3600)
     pipeline.rpush('http-threat:queue', json.dumps(job))
     pipeline.execute()
+    FEATURE_DRIFT_SCORE.observe(drift_score)
     QUEUED_JOBS.inc()
     return {'job_id': job_id, 'status': 'queued'}
 

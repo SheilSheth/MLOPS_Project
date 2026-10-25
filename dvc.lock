@@ -32,8 +32,8 @@ stages:
       size: 7344
     - path: src/train.py
       hash: md5
-      md5: 7a8d283fed7fc5491e9584b9217b0fb6
-      size: 15259
+      md5: 01d5dadfec3ebad10817635660180713
+      size: 16295
     params:
       params.yaml:
         dataset.path: dataset/csic_database.csv
@@ -41,7 +41,7 @@ stages:
     outs:
     - path: models/feature_extractor.pkl
       hash: md5
-      md5: d51729b496331d633939bf9cedd21c9d
+      md5: 93f1a2fce53b8d9473d7179d53cbcc49
       size: 5608
     - path: models/lgbm_model.pkl
       hash: md5
@@ -53,7 +53,7 @@ stages:
       size: 908
     - path: models/model.onnx
       hash: md5
-      md5: df2e8cda36b0dd2665ecf74cff11d45f
+      md5: 5ad73be8987cbbeabd8e81a13cd750e0
       size: 186404
     - path: models/scaler.pkl
       hash: md5

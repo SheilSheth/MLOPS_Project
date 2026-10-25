@@ -19,5 +19,12 @@
     "fp": 16,
     "tn": 673,
     "fn": 21
+  },
+  "feature_drift": {
+    "method": "mean_absolute_standardized_feature_value",
+    "baseline_samples": 3213,
+    "baseline_mean": 0.2796846330165863,
+    "baseline_std": 0.0274498350918293,
+    "threshold": 0.3620341382920742
   }
 }

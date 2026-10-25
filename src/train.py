@@ -222,6 +222,15 @@ def train(csv_path: str, out_dir: str = 'models', reports_dir: str = 'reports'):
     X_test_s  = scaler.transform(X_test)
     X_hold_s  = scaler.transform(X_hold)
 
+    # A lightweight baseline for monitoring whether live requests are unlike
+    # the normal training traffic. Scores are mean absolute standardized
+    # feature values; this is a simple demo signal, not a formal drift test.
+    normal_train_scaled = X_train_s[y_train == 0]
+    normal_drift_scores = np.mean(np.abs(normal_train_scaled), axis=1)
+    drift_baseline_mean = float(np.mean(normal_drift_scores))
+    drift_baseline_std = float(np.std(normal_drift_scores))
+    drift_threshold = drift_baseline_mean + 3.0 * drift_baseline_std
+
     print("Step 5: Training Baseline (Logistic Regression)...")
     lr = LogisticRegression(max_iter=1000, class_weight='balanced', random_state=SEED)
     lr.fit(X_train_s, y_train)
@@ -281,6 +290,13 @@ def train(csv_path: str, out_dir: str = 'models', reports_dir: str = 'reports'):
         'seed': SEED,
         'lgbm_params': best_params,
         'val_metrics_at_threshold': lgbm_val_m,
+        'feature_drift': {
+            'method': 'mean_absolute_standardized_feature_value',
+            'baseline_samples': int(len(normal_drift_scores)),
+            'baseline_mean': drift_baseline_mean,
+            'baseline_std': drift_baseline_std,
+            'threshold': drift_threshold,
+        },
     }
     with open(os.path.join(out_dir, 'config.json'), 'w') as f:
         json.dump(config, f, indent=2)
@@ -362,6 +378,9 @@ def train(csv_path: str, out_dir: str = 'models', reports_dir: str = 'reports'):
         'test_pr_auc': float(lgbm_pr),
         'clean_holdout_fpr': float(hold_fpr),
         'clean_holdout_false_positives': float(hold_fp),
+        'feature_drift_baseline_mean': drift_baseline_mean,
+        'feature_drift_baseline_std': drift_baseline_std,
+        'feature_drift_threshold': drift_threshold,
     })
     mlflow.log_artifacts(out_dir, artifact_path='model_bundle')
     mlflow.log_artifact(metrics_path, artifact_path='evaluation')

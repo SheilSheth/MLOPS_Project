@@ -46,6 +46,7 @@ class Predictor:
         with open(os.path.join(self.models_dir, 'config.json')) as f:
             config = json.load(f)
         self.threshold = config['threshold']
+        self.feature_drift_threshold = config.get('feature_drift', {}).get('threshold')
         self._ort_sess = None
 
     def _predict_onnx_probability(self, scaled_features: np.ndarray) -> np.ndarray:
@@ -76,13 +77,19 @@ class Predictor:
         """
         vec = self.fx.transform_one(record).reshape(1, -1)
         vec_s = self.scaler.transform(vec)
+        drift_score = float(np.mean(np.abs(vec_s)))
         if self.backend == 'onnx':
             prob = float(self._predict_onnx_probability(vec_s)[0])
         else:
             prob = float(self.model.predict_proba(vec_s)[0, 1])
         label = int(prob >= self.threshold)
         return {'label': label, 'probability': prob, 'is_attack': bool(label),
-                'backend': self.backend}
+                'backend': self.backend, 'feature_drift_score': drift_score}
+
+    def feature_drift_score(self, record: dict) -> float:
+        """Score one request against the standardized normal-training baseline."""
+        vec = self.fx.transform_one(record).reshape(1, -1)
+        return float(np.mean(np.abs(self.scaler.transform(vec))))
 
     def predict_batch(self, records: list[dict]) -> list[dict]:
         X = self.fx.transform(records)

@@ -23,6 +23,7 @@ Expected response:
 ```
 
 Interactive API documentation is at <http://127.0.0.1:8000/docs>.
+For click-by-click UI instructions and sample predictions, see [UI_GUIDE.md](UI_GUIDE.md).
 
 ## Try a benign request
 
@@ -38,7 +39,7 @@ $body = @{ method = 'GET'; url = "http://localhost/tienda1/publico/anadir.jsp?id
 Invoke-RestMethod http://127.0.0.1:8000/predict -Method Post -ContentType 'application/json' -Body $body
 ```
 
-Each prediction returns `label` (`0` normal, `1` attack), `probability`, `is_attack`, and `backend`.
+Each prediction returns `label` (`0` normal, `1` attack), `probability`, `is_attack`, `backend`, and `feature_drift_score`.
 
 ## Submit an asynchronous job
 

@@ -1,0 +1,64 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: feature-drift
+    folder: MLOps Local Demo
+    interval: 30s
+    rules:
+      - uid: feature_drift_alert
+        title: Input feature drift detected
+        condition: B
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange:
+              from: 300
+              to: 0
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: >-
+                (sum(rate(http_threat_feature_drift_score_sum[5m])) /
+                sum(rate(http_threat_feature_drift_score_count[5m])) -
+                max(http_threat_feature_drift_threshold))
+                and on() (sum(increase(http_threat_feature_drift_score_count[5m])) >= 10)
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+              range: false
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: B
+              type: classic_conditions
+        noDataState: OK
+        execErrState: Error
+        for: 1m
+        annotations:
+          summary: Recent HTTP inputs differ from the normal training baseline.
+          description: The 5-minute mean standardized-feature score exceeded its training threshold after at least 10 predictions. Review the dashboard and investigate incoming traffic.
+        labels:
+          severity: warning

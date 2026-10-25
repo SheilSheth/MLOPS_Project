@@ -43,20 +43,21 @@ Time estimates include implementation and a small amount of integration debuggin
 
 - Kubernetes, HPA, Minikube/Kind, Locust, and any remote deployment.
 - Cloud storage, DVC remote, container registry, and image publishing.
-- Evidently/drift monitoring, scheduled retraining, Airflow, and automatic model replacement.
+- Formal statistical drift testing, scheduled retraining, Airflow, and automatic model replacement.
 - GitHub Actions CI/CD and production-grade authentication, rate limiting, and security hardening.
 - Fairness claims for geography or VPN subgroups, since the current dataset may not contain reliable labels for those groups.
 
 ## Follow-up, only if more time is available
 
-1. Add drift alerts and a reviewed candidate retraining workflow.
+1. Add a reviewed candidate retraining and model rollback workflow.
 2. Improve queue reliability, retries, and concurrency beyond the one-worker local demonstration.
 
 ## Follow-up progress
 
 - **DVC pipeline: implemented and run locally.** `dvc.yaml` runs training, ONNX export, and evaluation; `params.yaml` holds the seed and dataset path; `dvc.lock` records the successful run. DVC tracks model binaries, intermediate predictions, and the dataset pointer while Git retains readable configs and reports. The CSV has been removed from Git tracking; its local copy remains available and is ignored by Git.
 - **GitHub Actions CI: implemented.** `.github/workflows/ci.yml` runs lint, unit tests, and the committed holdout FPR gate on pushes and pull requests to `main`. It does not retrain or run model-artifact integration tests because the DVC cache has no remote.
+- **Basic feature-drift alert: implemented locally.** Training stores a normal-traffic baseline in `models/config.json`; accepted `/predict` and `/jobs` inputs publish a score to Prometheus; Grafana shows the 5-minute mean and provisions an alert after at least 10 samples exceed the baseline threshold. This is a lightweight warning signal, not an automatic rollback or formal drift test.
 
 ## Practical constraint
 
-Two hours is enough for a narrow local demonstration if the current artifacts load cleanly and Docker is ready. MLflow records training runs locally and is not required by the serving API. This time is not enough to implement and validate the complete asynchronous, drift-aware, retraining MLOps system described in `project_md.md`.
+Two hours is enough for a narrow local demonstration if the current artifacts load cleanly and Docker is ready. MLflow records training runs locally and is not required by the serving API. This does not implement a reviewed rollback, scheduled retraining, or a formal drift test from `project_md.md`.

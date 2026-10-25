@@ -71,7 +71,7 @@ services:
       GF_PLUGINS_PREINSTALL_DISABLED: "true"
       GF_PLUGINS_PREINSTALL_AUTO_UPDATE: "false"
     volumes:
-      - grafana_data_clean:/var/lib/grafahttps://github.com/raj-mistry-01/MLOps_assignmentna
+      - grafana_data_clean:/var/lib/grafana
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:
