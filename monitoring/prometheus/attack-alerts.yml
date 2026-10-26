@@ -1,0 +1,11 @@
+groups:
+  - name: http-threat-detector
+    rules:
+      - alert: FrequentAttackPredictions
+        expr: increase(http_threat_predictions_total{result="attack"}[5m]) >= 3
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: Frequent attack predictions
+          description: Prometheus observed at least 3 attack predictions in the last 5 minutes, sustained for 1 minute.

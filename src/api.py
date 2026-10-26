@@ -31,9 +31,18 @@ HTTP_REQUEST_DURATION = Histogram(
 )
 HTTP_PREDICTIONS = Counter(
     'http_threat_predictions_total',
-    'Number of completed model predictions by predicted class.',
+    'Number of synchronous model predictions by predicted class.',
     ['result'],
 )
+ASYNC_HTTP_PREDICTIONS = Counter(
+    'http_threat_async_predictions_total',
+    'Number of completed asynchronous model predictions by predicted class.',
+    ['result'],
+)
+_ASYNC_PREDICTION_TOTALS: dict[str, int] = {'attack': 0, 'normal': 0}
+for _prediction_result in ('attack', 'normal'):
+    HTTP_PREDICTIONS.labels(result=_prediction_result)
+    ASYNC_HTTP_PREDICTIONS.labels(result=_prediction_result)
 QUEUED_JOBS = Counter('http_threat_jobs_submitted_total', 'Prediction jobs submitted to Redis.')
 QUEUE_DEPTH = Gauge('http_threat_queue_depth', 'Prediction jobs waiting in the Redis queue.')
 PROCESSING_DEPTH = Gauge(
@@ -142,6 +151,13 @@ def metrics(request: Request) -> Response:
     redis = request.app.state.redis
     QUEUE_DEPTH.set(redis.llen('http-threat:queue'))
     PROCESSING_DEPTH.set(redis.llen('http-threat:processing'))
+    async_totals = redis.hgetall('http-threat:async-predictions')
+    for result in ('attack', 'normal'):
+        current_total = int(async_totals.get(result, 0))
+        previous_total = _ASYNC_PREDICTION_TOTALS[result]
+        if current_total > previous_total:
+            ASYNC_HTTP_PREDICTIONS.labels(result=result).inc(current_total - previous_total)
+            _ASYNC_PREDICTION_TOTALS[result] = current_total
     return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 

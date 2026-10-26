@@ -72,3 +72,7 @@ mlflow.db
 mlflow.db-shm
 mlflow.db-wal
 mlruns/
+
+# Local Alertmanager configuration and webhook secrets (keep out of Git)
+/monitoring/alertmanager/alertmanager.yml
+/monitoring/alertmanager/slack_workflow_url.txt

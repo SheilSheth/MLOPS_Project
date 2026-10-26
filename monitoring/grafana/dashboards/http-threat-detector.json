@@ -27,12 +27,12 @@
     },
     {
       "datasource": {"type": "prometheus", "uid": "prometheus"},
-      "fieldConfig": {"defaults": {"unit": "reqps"}, "overrides": []},
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
       "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
       "id": 3,
       "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "single"}},
-      "targets": [{"expr": "sum by (result) (rate(http_threat_predictions_total[1m]))", "legendFormat": "{{result}}", "refId": "A"}],
-      "title": "Prediction rate by result",
+      "targets": [{"expr": "sum by (result) (http_threat_predictions_total) + sum by (result) (http_threat_async_predictions_total)", "legendFormat": "{{result}}", "refId": "A"}],
+      "title": "Cumulative predictions by result",
       "type": "timeseries"
     },
     {

@@ -54,6 +54,8 @@ def run_worker() -> None:
 
             request = PredictionRequest.model_validate(job['request'])
             result = predictor.predict_one(_to_record(request))
+            result_label = 'attack' if result['is_attack'] else 'normal'
+            redis.hincrby('http-threat:async-predictions', result_label, 1)
             job.update(status='completed', result=result)
         except Exception as exc:
             # Keep the returned error generic; detailed payloads are not logged.
